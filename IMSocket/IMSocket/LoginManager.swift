@@ -9,10 +9,15 @@
 import UIKit
 import ProtocolBuffers
 
+
+var kCurrentUid : UInt32?;
 func requst(withBodyMsg body:GeneratedMessageBuilder,server:EnumRootServer,methd:EnumServerMethod) throws ->Root {
     do {
-        let header = try MsgHeader.Builder()
-            .setType(.enumRootTypeRequest).setServer(server).setMethod(methd).build()
+        let headerBuild =  MsgHeader.Builder().setType(.enumRootTypeRequest).setServer(server).setMethod(methd)
+        if let uid = kCurrentUid {
+            headerBuild.setUid(uid)
+        }
+        let header = try? headerBuild.build()
         let tdata  = try body.build().data()
         let msg   = try Root.Builder().setBody(tdata).setHeader(header).build()
         return msg;
@@ -22,8 +27,9 @@ func requst(withBodyMsg body:GeneratedMessageBuilder,server:EnumRootServer,methd
     }
 }
 
-class LoginManager {
 
+
+class LoginManager {
     static func login(user:String,pwd:String,completion:@escaping (LoginRes?,Error?)->Void){
         let loginReq = LoginReq.Builder().setPwd(pwd).setNickName(user)
         guard let req = try? requst(withBodyMsg: loginReq,server: .enumRootServerLogin, methd: .login) else { return }
@@ -45,6 +51,9 @@ class LoginManager {
         SocketManager.shared().sent(root: req) { (res, err) in
             if let res = res {
                 let  loginRes  = try? SiginRes.parseFrom(data: res.body)
+                if let uid = loginRes?.uid {
+                    kCurrentUid  = uid
+                }
                 completion(loginRes,nil)
             }else{
                 completion(nil,err)

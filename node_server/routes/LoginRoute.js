@@ -23,22 +23,6 @@ var handle = {};
 var latestUid = 1;
 
 
-
-function headerWithType(server,method) {
-    var header = new Header();
-    header.server  = server;
-    header.type    = BaseType.enum_root_type_respond;
-    header.method  = method;
-}
-
-function responWithBody(body,server,method) {
-    var root = new Root();
-    root.header = headerWithType(server,method);
-    root.body  = body.toBuffer();
-    return root;
-}
-
-
 function handleLoginMsg(reqData) {
     var req = LoginReq.decode(reqData);
     var name = req.nick_name;
@@ -50,7 +34,7 @@ function handleLoginMsg(reqData) {
     res.uid   = latestUid + "";
     latestUid++;
 
-    return responWithBody(res)
+    return res
 }
 
 function  handleSigninMsg(reqData) {
@@ -60,10 +44,10 @@ function  handleSigninMsg(reqData) {
 
     var res = new SiginRespon();
     res.token = name + "_" + pwd ;
-    res.uid   = latestUid + "";
+    res.uid   = latestUid;
     latestUid++;
 
-    return responWithBody(res)
+    return res
 }
 
 function  handleLogoutMsg(reqData) {

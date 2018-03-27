@@ -55,7 +55,7 @@ message root{
 
 
 message user_info {
-	required int32  uid = 1;
+	required uint32  uid = 1;
 	required string nick_name = 2;
 	required string avarta_url = 3;
 	required int32  is_online = 4;

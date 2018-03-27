@@ -25,20 +25,30 @@ class ViewController: UIViewController {
     
     @IBAction func signin(_ sender: Any) {
         
-        guard let req = RequstBuilder.signinRequest(withUser: self.nameFile.text ?? "", pwd: self.pwdFile.text ?? "") else { return }
-        SocketManager.shared().sent(root: req, completion: { (respon,err)  in
+        LoginManager.signin(user: self.nameFile.text ?? "", pwd: self.pwdFile.text ?? "") { (res, err) in
+            if let res = res {
+                
+            }else{
+                print(err)
+            }
             
-        })
+        }
+        
+       
         
         
     }
     
     @IBAction func login(_ sender: Any) {
         
-        guard let req = RequstBuilder.loginRequest(withUser: self.nameFile.text ?? "", pwd: self.pwdFile.text ?? "") else { return }
-        SocketManager.shared().sent(root: req, completion: { (respon,err) in
+        LoginManager.login(user: self.nameFile.text ?? "", pwd: self.pwdFile.text ?? "") { (res, err) in
+            if let res = res {
+                
+            }else{
+                print(err)
+            }
             
-        })
+        }
         
     }
     

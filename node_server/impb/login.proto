@@ -13,12 +13,12 @@ message login_req {
 }
 
 message sigin_res {
-	required string uid   = 1;
+	required uint32 uid   = 1;
 	required string token = 2;
 }
 
 message login_res {
-	required string uid   = 1;
+	required uint32 uid   = 1;
 	required string token = 2;
 }
 

@@ -1,5 +1,5 @@
 var net = require('net');
-var loginHandle = require("./LoginHandle");
+var loginRoute = require("./routes/LoginRoute");
 var ProtoBuf = require("protobufjs");
 var builder = ProtoBuf.loadProtoFile("./impb/root.proto"),
     Message = builder.build("root"),
@@ -10,6 +10,16 @@ var builder = ProtoBuf.loadProtoFile("./impb/root.proto"),
 var LoginBuilder = ProtoBuf.loadProtoFile("./impb/login.proto"),
     SiginReq   = LoginBuilder.build("signin_req");
 
+var socketMap  = {};
+var sockeIdMap = {};
+var db = require("./DataBase")
+
+function getSocketId(socket) {
+    var id = sock.remoteAddress + ":" + sock.remotePort
+    return id
+}
+
+db.connect()
 
 var HOST = '127.0.0.1';
 var PORT = 6969;
@@ -19,18 +29,24 @@ server.on('connection', function(sock) {
 
     console.log('CONNECTED: ' +
         sock.remoteAddress +':'+ sock.remotePort);
-    // 其它内容与前例相同
+    socketMap[getSocketId(sock)] = sock
 
-    // 为这个socket实例添加一个"data"事件处理函数
     sock.on('data', function(data) {
 
         try  {
             var msg = Message.decode(data);
-            var header = msg.header;
+
+            var uid = msg.header.uid
+            var socketId = sockeIdMap[uid]
+            var socket  = socketMap[socketId]
+
             var respon = {};
             switch (msg.header.server){
                 case BaseServer.enum_root_server_login:
-                    respon = loginHandle.handleReq(msg.body,msg.header.method)
+                    respon = loginRoute.handleReq(msg.body,msg.header.method)
+                    if (respon.uid){
+                        sockeIdMap[uid]  = getSocketId(sock)
+                    }
                     break;
                 case BaseServer.enum_root_server_ping:
                     break;
@@ -42,7 +58,9 @@ server.on('connection', function(sock) {
 
             console.log('DATA ' + sock.remoteAddress + ': ' + respon.body);
             // 回发该数据，客户端将收到来自服务端的数据
-            var responData = respon.toBuffer();
+            msg.header.type  = BaseType.enum_root_type_respond
+            msg.body  = respon.toBuffer()
+            var responData = msg.toBuffer();
             sock.write(responData);
 
         }catch (err){
