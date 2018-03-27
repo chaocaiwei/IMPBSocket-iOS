@@ -1,0 +1,71 @@
+
+syntax = "proto2";
+
+enum enum_root_type {
+	enum_root_type_request = 1;
+	enum_root_type_respond = 2;
+	enum_root_type_error   = 3;
+	enum_root_type_message = 4;
+}
+
+enum enum_root_server {
+	enum_root_server_login     = 1; // 登陆注册退出
+	enum_root_server_ping      = 2;
+	enum_root_server_sent_msg  = 3; // 转发消息
+	enum_root_server_group_msg = 4; // 群消息
+	enum_root_server_broadcast = 5; // 对所有人关播
+	enum_root_server_notification = 6; // 推送消息
+}
+
+
+enum enum_server_method {
+	login  = 1;
+	logout = 2;
+	signin = 3;
+	sent_msg = 10;
+	group_msg = 20;
+	broadcast  = 30;
+	notification_addFriend = 100;
+	notification_receiveFriend = 102;
+	notification_login_other_device = 103;
+	ping   = 256;
+}
+
+message msg_header  {
+	required enum_root_type type  = 1;
+	required enum_root_server server = 2;
+	required enum_server_method method = 3;
+	optional uint32 uid  = 4;
+    optional int32  auto_token = 5;
+	optional int32  seq   = 6;
+}
+
+message ext_key_info
+{
+    required string key = 1;   
+    required string value = 2; 
+}
+
+
+message root{
+	required msg_header header = 1;
+	optional bytes      body   = 2;
+	optional ext_key_info ext  = 3;
+}
+
+
+message user_info {
+	required int32  uid = 1;
+	required string nick_name = 2;
+	required string avarta_url = 3;
+	required int32  is_online = 4;
+}
+
+
+
+
+
+
+
+
+

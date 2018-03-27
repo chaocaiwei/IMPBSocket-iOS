@@ -1,0 +1,55 @@
+
+syntax = "proto2";
+import "root.proto";
+
+message msg_text_content {
+	required string text = 1;
+}
+
+message msg_img_content {
+	required string img_url = 1;
+}
+
+message location_info {
+	required double lat = 1;
+	required double lon = 2;
+}
+
+message msg_location_content {
+	required location_info location = 1;
+}
+
+message msg_sound_content {
+	required double sound_duration = 1; // 时长
+	required string source_url = 2;
+	optional string location_url = 3;
+	optional string fild_nme = 4;
+}
+
+// 表情
+message msg_expression_content {
+	required int32  eid = 1; // 表情id
+	optional string name = 2; // 表情名称
+}
+
+message msg_cumstom_content {
+	required ext_key_info info = 1;
+}
+
+enum enum_msg_content_type {
+	enum_msg_content_type_text   = 0;
+	enum_msg_content_type_image  = 1;
+	enum_msg_content_type_sound = 2;
+	enum_msg_content_type_location = 3;
+	enum_msg_content_type_video   = 4;
+	enum_msg_content_type_expression   = 5;
+	enum_msg_content_type_custom   = 6;
+}
+
+message base_msg {
+	required user_info sent_user_info   = 4;
+	required user_info target_user_info = 1;
+	required enum_msg_content_type type = 2;
+	required bytes content = 3;
+	optional ext_key_info ext = 9;
+}

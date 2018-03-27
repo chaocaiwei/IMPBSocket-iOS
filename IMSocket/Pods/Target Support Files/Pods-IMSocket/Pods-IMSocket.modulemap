@@ -1,0 +1,6 @@
+framework module Pods_IMSocket {
+  umbrella header "Pods-IMSocket-umbrella.h"
+
+  export *
+  module * { export * }
+}
