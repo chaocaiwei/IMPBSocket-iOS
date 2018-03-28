@@ -18,6 +18,7 @@
 		2705A461206A34E2006C0CAC /* Friends.proto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2705A45D206A34E2006C0CAC /* Friends.proto.swift */; };
 		2705A465206A4014006C0CAC /* Root.proto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2705A464206A4014006C0CAC /* Root.proto.swift */; };
 		2705A467206A4AD0006C0CAC /* Error.proto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2705A466206A4AD0006C0CAC /* Error.proto.swift */; };
+		2782C07A206BC9E70097E246 /* SocketDataPaser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2782C079206BC9E70097E246 /* SocketDataPaser.swift */; };
 		27E855DA206A6F0A0081594D /* LoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27E855D9206A6F0A0081594D /* LoginManager.swift */; };
 		A6F1E22818024EEDBFC01A5A /* Pods_IMSocket.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C785151B0527A1133E0637BD /* Pods_IMSocket.framework */; };
 /* End PBXBuildFile section */
@@ -36,6 +37,7 @@
 		2705A45D206A34E2006C0CAC /* Friends.proto.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Friends.proto.swift; sourceTree = "<group>"; };
 		2705A464206A4014006C0CAC /* Root.proto.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Root.proto.swift; sourceTree = "<group>"; };
 		2705A466206A4AD0006C0CAC /* Error.proto.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Error.proto.swift; sourceTree = "<group>"; };
+		2782C079206BC9E70097E246 /* SocketDataPaser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketDataPaser.swift; sourceTree = "<group>"; };
 		27E855D9206A6F0A0081594D /* LoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginManager.swift; sourceTree = "<group>"; };
 		3C8B97401C9D7C6BF1057C53 /* Pods-IMSocket.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IMSocket.debug.xcconfig"; path = "Pods/Target Support Files/Pods-IMSocket/Pods-IMSocket.debug.xcconfig"; sourceTree = "<group>"; };
 		8434E45BC9DC1EF3E71903CA /* Pods-IMSocket.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IMSocket.release.xcconfig"; path = "Pods/Target Support Files/Pods-IMSocket/Pods-IMSocket.release.xcconfig"; sourceTree = "<group>"; };
@@ -84,6 +86,7 @@
 				2705A4432069D64F006C0CAC /* Info.plist */,
 				2705A4492069D6D9006C0CAC /* SocketManager.swift */,
 				27E855D9206A6F0A0081594D /* LoginManager.swift */,
+				2782C079206BC9E70097E246 /* SocketDataPaser.swift */,
 			);
 			path = IMSocket;
 			sourceTree = "<group>";
@@ -252,6 +255,7 @@
 				2705A45E206A34E2006C0CAC /* Login.proto.swift in Sources */,
 				2705A465206A4014006C0CAC /* Root.proto.swift in Sources */,
 				2705A43A2069D64F006C0CAC /* ViewController.swift in Sources */,
+				2782C07A206BC9E70097E246 /* SocketDataPaser.swift in Sources */,
 				2705A44A2069D6D9006C0CAC /* SocketManager.swift in Sources */,
 				2705A461206A34E2006C0CAC /* Friends.proto.swift in Sources */,
 				27E855DA206A6F0A0081594D /* LoginManager.swift in Sources */,

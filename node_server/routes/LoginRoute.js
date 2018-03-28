@@ -17,65 +17,96 @@ var LoginBuilder = ProtoBuf.loadProtoFile("./impb/login.proto"),
     LoginRespon   = LoginBuilder.build("login_res"),
     LogoutReq   = LoginBuilder.build("logout_req"),
     CommonRes   = LoginBuilder.build("common_res");
+var ErrorBuilder = ProtoBuf.loadProtoFile("./impb/error.proto"),
+    Error    = ErrorBuilder.build("Error");
+var db = require("../dataBase")
 
 var handle = {};
 
-var latestUid = 1;
 
 
-function handleLoginMsg(reqData) {
-    var req = LoginReq.decode(reqData);
+
+function handleLoginMsg(root,completion) {
+    var req = LoginReq.decode(root.body);
     var name = req.nick_name;
     var pwd  = req.pwd ;
 
-
-    var res = new LoginRespon();
-    res.token = name + "_" + pwd ;
-    res.uid   = latestUid + "";
-    latestUid++;
-
-    return res
+    db.userWithName(name,function (user,err) {
+        if (user){
+            var res = new LoginRespon();
+            res.token = user.token;
+            res.uid   = user.uid;
+            root.body = res.toBuffer()
+        }else{
+            print(err)
+            var err = Error.builder()
+            err.msg  = "用户不存在"
+            root.body  = err.toBuffer();
+            root.header.type  = BaseType.enum_root_type_error
+        }
+        sock.write(root.toBuffer());
+    })
 }
 
-function  handleSigninMsg(reqData) {
-    var req = SiginReq.decode(reqData);
+function  handleSigninMsg(root,sock) {
+    var req = SiginReq.decode(root.body);
     var name = req.nick_name;
-    var pwd  = req.pwd ;
+    var pwd  = req.pwd;
+    var token = Math.ceil(Math.random()*9999999) + "_" + name
+    db.insertLoginInfo(name,pwd,token,function (err) {
+        if(err){
+            var errRes = Error.builder()
+            errRes.msg  = err.toString()
+            root.body  = errRes.toBuffer();
+            root.header.type  = BaseType.enum_root_type_error
+            sock.write(root.toBuffer());
+            return
+        }
+        db.latestUserId(function (id) {
+            var res = new SiginRespon();
+            res.uid   = id;
+            res.token = token;
+            root.body = res.toBuffer()
+            sock.write(root.toBuffer());
+        })
+    })
 
-    var res = new SiginRespon();
-    res.token = name + "_" + pwd ;
-    res.uid   = latestUid;
-    latestUid++;
-
-    return res
 }
 
-function  handleLogoutMsg(reqData) {
-    var req = LogoutReq.decode(reqData);
+function  handleLogoutMsg(root,sock) {
+    var req = LogoutReq.decode(root.body);
     var name = req.nick_name;
-    var pwd  = req.pwd ;
-
+    var pwd  = req.pwd;
+    var user = {
+        "online":0,
+        "user_id":req.header.uid
+    }
+    db.updateUser(user)
     var res = new CommonRes();
     res.msg = "退出成功";
+    root.body = res.toBuffer()
+    sock.write(root.toBuffer());
 
-    return responWithBody(res)
+
 }
 
 
-exports.handleReq = function (reqData,method){
-
-    switch(method)  {
+exports.handleReq = function (root,sock){
+    switch(root.header.method)  {
         case SeverMethod.login:
-            return handleLoginMsg(reqData)
+            if (root.header.uid){
+                sockeIdMap[uid]  = getSocketId(sock)
+            }
+            handleLoginMsg(root,sock)
             break;
         case SeverMethod.signin:
-            return handleSigninMsg(reqData)
+            if (root.header.uid){
+                sockeIdMap[uid]  = getSocketId(sock)
+            }
+            handleSigninMsg(root,sock)
             break;
         case SeverMethod.logout:
-            return handleLogoutMsg(reqData)
+            handleLogoutMsg(root,sock)
             break;
     }
 };
-
-
-exports  = handle;
