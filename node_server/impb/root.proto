@@ -48,7 +48,7 @@ message ext_key_info
 
 
 message root{
-	required msg_header header = 1;
+	optional msg_header header = 1;
 	optional bytes      body   = 2;
 	optional ext_key_info ext  = 3;
 }

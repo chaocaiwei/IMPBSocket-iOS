@@ -7,10 +7,10 @@
 //
 
 import UIKit
-
+import ProtocolBuffers
 
 let margic_num : UInt8 = 0b10000001
-let header_length : Int  = 4
+let header_length : Int  = 8
 class SocketDataPaser {
 
     static let _instance = SocketDataPaser()
@@ -26,23 +26,25 @@ class SocketDataPaser {
     }
     
     struct BaseHeader {
-        var type : BaseType
+        var seq   : UInt32
+        var type  : BaseType
         var lenth : UInt16
     }
     
     
     class _Parser {
         var header : BaseHeader?
-        var body   : Root?
+        var body   : GeneratedMessage?
+        var seq    : UInt32?
         var data   : Data?
         
         init(data:Data) {
             self.data  = data
         }
         
-        init(type:BaseType,body:Root) {
+        init(type:BaseType,seq:UInt32,body:GeneratedMessage) {
             self.body    = body
-            let header   = BaseHeader(type: type, lenth: UInt16(body.data().count))
+            let header   = BaseHeader(seq:seq, type: type, lenth: UInt16(body.data().count))
             self.header  = header
             var data = build(withHeader: header)
             let bodyData = body.data()
@@ -58,14 +60,20 @@ class SocketDataPaser {
                 return false
             }
             self.header  = header
-            let bodyData = data.subdata(in: header_length..<(Int(header.lenth) + header_length))
-            self.body    = try? Root.parseFrom(data: bodyData)
-            self.data  = data.dropFirst(Int(header.lenth) + header_length)
+            
+            let bodyData = data[header_length..<(Int(header.lenth) + header_length)]
+            do {
+                self.body    = try SiginRes.parseFrom(data: bodyData)
+                self.data  = data.dropFirst(Int(header.lenth) + header_length)
+            } catch let err {
+                print(err)
+                return false
+            }
             return true
         }
         
         /**
-         4个字节
+         8个字节
          margic_num 魔法数字  头部标识 0b10000001
          legth 包体长度 两个字节  无符号整型unsigned short
          type  消息类型 一个字节  0心跳包 1普通数据请求 2聊天消息 3推送
@@ -74,36 +82,39 @@ class SocketDataPaser {
             if data.count < header_length {
                 return nil
             }
-            var headerData = data.subdata(in: 0..<4)
-            var tag :  UInt8 = 0
-            headerData.copyBytes(to: &tag, count: 1)
-            headerData = headerData.dropFirst()
+            var headerData  = data[0..<header_length]
+            let tag : UInt8 = headerData[0..<1].withUnsafeBytes{ $0.pointee }
             if tag != margic_num {
                 return nil
             }
-            var typeValue : UInt8 = 0
-            headerData.copyBytes(to: &typeValue, count: 1)
-            headerData = headerData.dropFirst()
-            let type = BaseType(rawValue:typeValue)!
-            
-            let length : UInt16  = headerData.withUnsafeMutableBytes { (prt:UnsafeMutablePointer<UInt16>) -> UInt16 in
-                return prt[0]
-            }
-            let head = BaseHeader(type: type, lenth: length)
-            
+            let seq : UInt32 = headerData[1..<5].withUnsafeBytes({$0.pointee })
+            let typeValue : UInt8  =  headerData[5..<6].withUnsafeBytes({$0.pointee })
+            let length : UInt16    =  headerData[6..<8].withUnsafeBytes({$0.pointee })
+            let type  = BaseType(rawValue: typeValue.bigEndian)!
+            let head = BaseHeader(seq: seq.bigEndian, type: type, lenth: length.bigEndian)
             return head
         }
         
         func build(withHeader header:BaseHeader)->Data {
+            
             var data = Data()
-            var marg = margic_num
-            data.append(UnsafeBufferPointer<UInt8>.init(start: &marg, count: 1))
-            var type = header.type.rawValue
-            data.append(UnsafeBufferPointer<UInt8>.init(start: &type, count: 1))
-            var length = header.lenth
-            let point = UnsafeBufferPointer<UInt16>.init(start: &length, count: 1)
-            data.append(point)
+            var marg = margic_num.bigEndian
+            var seq  = header.seq.bigEndian
+            var type = header.type.rawValue.bigEndian
+            var length = header.lenth.bigEndian
+            
+            let mp = UnsafeBufferPointer(start: &marg, count: 1)
+            let sp = UnsafeBufferPointer(start: &seq, count: 1)
+            let tp = UnsafeBufferPointer(start: &type, count: 1)
+            let lp = UnsafeBufferPointer(start: &length, count: 1)
+           
+            data.append(mp)
+            data.append(sp)
+            data.append(tp)
+            data.append(lp)
+            
             return data
+            
         }
         
         
@@ -111,12 +122,12 @@ class SocketDataPaser {
     
     
     
-    func build(withType type:BaseType,body:Root)->Data?{
-        return _Parser(type: type, body: body).data
+    func build(withType type:BaseType,seq:UInt32,body:GeneratedMessage)->Data?{
+        return _Parser(type: type,seq:seq, body: body).data
     }
     
-    func parse(data:Data)->[(BaseHeader?,Root?)]{
-        var result:[(BaseHeader?,Root?)] = []
+    func parse(data:Data)->[(BaseHeader?,GeneratedMessage?)]{
+        var result:[(BaseHeader?,GeneratedMessage?)] = []
         let paser = _Parser(data: data)
         while paser.parse() {
             result.append((paser.header,paser.body))

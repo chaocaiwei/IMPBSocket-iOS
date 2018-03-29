@@ -2,6 +2,21 @@
 syntax = "proto2";
 import "root.proto";
 
+
+enum User_cmd {
+	User_cmd_sign_in = 1;
+	User_cmd_login   = 2;
+	User_cmd_logout  = 3;
+	User_cmd_user_info = 4;
+	User_cmd_user_by_id = 5;
+}
+
+
+message User_msg {
+	required User_cmd cmd = 1;
+	optional bytes body  = 2;
+}
+
 message signin_req {
 	required string nick_name = 1;
 	required string pwd = 2;

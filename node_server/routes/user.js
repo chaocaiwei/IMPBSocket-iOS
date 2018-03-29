@@ -10,13 +10,15 @@ var builder = ProtoBuf.loadProtoFile("./impb/root.proto"),
     BaseType = builder.build("enum_root_type"),
     BaseServer = builder.build("enum_root_server");
     SeverMethod = builder.build("enum_server_method");
-var LoginBuilder = ProtoBuf.loadProtoFile("./impb/login.proto"),
+var LoginBuilder = ProtoBuf.loadProtoFile("./impb/user.proto"),
     SiginReq   = LoginBuilder.build("signin_req"),
     SiginRespon   = LoginBuilder.build("sigin_res"),
     LoginReq   = LoginBuilder.build("login_req"),
     LoginRespon   = LoginBuilder.build("login_res"),
     LogoutReq   = LoginBuilder.build("logout_req"),
-    CommonRes   = LoginBuilder.build("common_res");
+    CommonRes   = LoginBuilder.build("common_res"),
+    User_msg    = LoginBuilder.build("User_msg"),
+    User_cmd    = LoginBuilder.build("User_cmd")
 var ErrorBuilder = ProtoBuf.loadProtoFile("./impb/error.proto"),
     Error    = ErrorBuilder.build("Error");
 var db = require("../dataBase")
@@ -26,29 +28,42 @@ var handle = {};
 
 
 
-function handleLoginMsg(root,completion) {
+function handleLoginMsg(root,compl) {
     var req = LoginReq.decode(root.body);
     var name = req.nick_name;
     var pwd  = req.pwd ;
-
     db.userWithName(name,function (user,err) {
-        if (user){
+        if (user ){
+            if (user.pwd != pwd){
+                print(err)
+                var err = Error.builder()
+                err.msg  = "密码错误"
+                if(compl){
+                    compl(err)
+                }
+                return;
+            }
+
             var res = new LoginRespon();
             res.token = user.token;
             res.uid   = user.uid;
-            root.body = res.toBuffer()
+            if(compl){
+                compl(res,user.uid)
+            }
+
         }else{
             print(err)
             var err = Error.builder()
             err.msg  = "用户不存在"
-            root.body  = err.toBuffer();
-            root.header.type  = BaseType.enum_root_type_error
+            if(compl){
+                compl(err)
+            }
         }
-        sock.write(root.toBuffer());
+
     })
 }
 
-function  handleSigninMsg(root,sock) {
+function  handleSigninMsg(root,compl) {
     var req = SiginReq.decode(root.body);
     var name = req.nick_name;
     var pwd  = req.pwd;
@@ -65,15 +80,16 @@ function  handleSigninMsg(root,sock) {
         db.latestUserId(function (id) {
             var res = new SiginRespon();
             res.uid   = id;
-            res.token = token;
-            root.body = res.toBuffer()
-            sock.write(root.toBuffer());
+            res.token = token.toString();
+            if(compl){
+                compl(res,id)
+            }
         })
     })
 
 }
 
-function  handleLogoutMsg(root,sock) {
+function  handleLogoutMsg(root,compl) {
     var req = LogoutReq.decode(root.body);
     var name = req.nick_name;
     var pwd  = req.pwd;
@@ -84,29 +100,27 @@ function  handleLogoutMsg(root,sock) {
     db.updateUser(user)
     var res = new CommonRes();
     res.msg = "退出成功";
-    root.body = res.toBuffer()
-    sock.write(root.toBuffer());
+    if(compl){
+        compl(res)
+    }
 
 
 }
 
 
-exports.handleReq = function (root,sock){
-    switch(root.header.method)  {
-        case SeverMethod.login:
-            if (root.header.uid){
-                sockeIdMap[uid]  = getSocketId(sock)
-            }
-            handleLoginMsg(root,sock)
+exports.route = function (root,completion){
+
+    var user = User_msg.decode(root);
+
+    switch(user.cmd)  {
+        case User_cmd.User_cmd_login:
+            handleLoginMsg(user,completion)
             break;
-        case SeverMethod.signin:
-            if (root.header.uid){
-                sockeIdMap[uid]  = getSocketId(sock)
-            }
-            handleSigninMsg(root,sock)
+        case User_cmd.User_cmd_sign_in:
+            handleSigninMsg(user,completion)
             break;
-        case SeverMethod.logout:
-            handleLogoutMsg(root,sock)
+        case User_cmd.User_cmd_logout:
+            handleLogoutMsg(user,completion)
             break;
     }
 };

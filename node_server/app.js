@@ -1,11 +1,13 @@
 var net = require('net');
-var loginRoute = require("./routes/loginRoute");
+
 var global = require("./global")
 var ProtoBuf = require("protobufjs");
 var builder = ProtoBuf.loadProtoFile("./impb/root.proto"),
-    Message = builder.build("root"),
     BaseServer = builder.build("enum_root_server");
-
+var pingRoute = require("./routes/pinRoute"),
+    commonRoute = require("./routes/commonRoute"),
+    messageRoute = require("./routes/messageRoute"),
+    notificationRoute = require("./routes/notificationRoute")
 
 var HOST = '127.0.0.1';
 var PORT = 6969;
@@ -17,29 +19,67 @@ server.on('connection', function(sock) {
 
     sock.on('data', function(data) {
 
-        var margic = data.readUInt8(0)
-        var type   = data.readUInt8(1)
-        var lenth  = data.readUInt16BE(2)
+        var tempData = data
+        while (tempData.length){
+            var header = data.slice(0,8)
+            var margic = header.readUInt8(0)
+            var seq    = header.readUInt32BE(1)
+            var type   = header.readUInt8(5)
+            var lenth  = header.readUInt16BE(6)
+            var body =   tempData.slice(8,lenth+8)
+            var lest = tempData.length - ( lenth + 8 )
+            handle(type,header,body)
+            if (lest){
+                tempData = data.slice(lenth+8,lest)
+            }else {
+                break
+            }
+        }
 
-        var newBuf = data.slice(4,lenth)
+        // type 1心跳包 2普通数据请求 3聊天消息 4推送
+        function handle(type,header,body) {
+            switch (type){
+                case 1:
+                    pingRoute.route(function () {
+                        sock.write(data)
+                    })
 
+                case 2:
+                    commonRoute.route(body,function (rsp,uid) {
+                        if (uid){
+                            global.cachSock(sock,uid)
+                        }
+                        sentWith(header,rsp)
+                    })
+                    break;
+                case 3:
+                    messageRoute.route(body,function (uids) {
+                        for ( uid in uids ){
+                            var sock = global.sockWithUid(uid)
+                            if(sock){
+                                sock.write(data)
+                            }else{
+                                // 离线消息处理
 
-        try  {
-            var msg = Message.decode(newBuf);
-            switch (msg.header.server){
-                case BaseServer.enum_root_server_login:
-                    loginRoute.handleReq(msg,sock)
+                            }
+
+                        }
+                    })
                     break;
-                case BaseServer.enum_root_server_ping:
-                    break;
-                case BaseServer.enum_root_server_sent_msg:
-                    break;
-                default:
+                case 4: // 收到推送的回执
+                    notificationRoute.route(body,function () {
+                        sock.write(data)
+                    })
                     break;
             }
-            console.log('DATA ' + sock.remoteAddress + ': ' + data);
-        }catch (err){
-            console.log(err);
+        }
+
+        function sentWith(header,response) {
+            var resData = response.toBuffer()
+            // 去掉length并替换
+            var ops = header.writeUInt16BE(resData.length,6)
+            var result = Buffer.concat([header,resData])
+            sock.write(result)
         }
 
     });
@@ -51,4 +91,7 @@ server.on('connection', function(sock) {
 
 });
 
+
+
+exports.server = server;
 

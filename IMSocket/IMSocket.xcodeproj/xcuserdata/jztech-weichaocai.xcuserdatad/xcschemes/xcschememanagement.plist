@@ -7,7 +7,30 @@
 		<key>IMSocket.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>3</integer>
+			<integer>4</integer>
+		</dict>
+		<key>TodayTest.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>5</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>2705A4332069D64F006C0CAC</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>27DB338C206CBC040032B1C4</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>27DB33B4206CC0420032B1C4</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

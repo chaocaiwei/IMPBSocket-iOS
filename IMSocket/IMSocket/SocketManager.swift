@@ -19,18 +19,18 @@ class SocketManager : NSObject {
     static func shared()->SocketManager{
         return _ins;
     }
-    typealias SentMsgCompletion = (Root?,Error?)->Void
+    typealias SentMsgCompletion = (GeneratedMessage?,Error?)->Void
     let delegateQueue = DispatchQueue.global()
     var socket :GCDAsyncSocket!
     var uid : String?
     var token : String?
-    var completionDic = [Int32:SentMsgCompletion]()
-    var latestSeq  : Int32 = 1;
+    var completionDic = [UInt32:SentMsgCompletion]()
+    var latestSeq  : UInt32 = 1;
     
     private let comSem = DispatchSemaphore(value: 1)
     // 添加发送数据的回调函数到派发表里
     // @raturn completion对应的seq 队列顺序标识
-    private func add(sentCompletion completion:@escaping SentMsgCompletion)->Int32{
+    private func add(sentCompletion completion:@escaping SentMsgCompletion)->UInt32{
         comSem.wait()
         let tamp = self.latestSeq;
         self.completionDic[tamp] = completion
@@ -39,9 +39,9 @@ class SocketManager : NSObject {
         return tamp
     }
     
-    private func dispatchSentComepletion(withTag tag:Int,root:Root,error:Error){
+    private func dispatchSentComepletion(withTag tag:UInt32,root:GeneratedMessage?,error:Error?){
         comSem.wait()
-        let completion = self.completionDic[root.header.seq]
+        let completion = self.completionDic[tag]
         completion?(root,error)
         comSem.signal()
     }
@@ -61,15 +61,10 @@ class SocketManager : NSObject {
         socket.disconnect()
     }
     
-    func sent(root:Root,completion:@escaping SentMsgCompletion)  {
-        do {
-            let seq = add(sentCompletion: completion)
-//            var data = try root.getBuilder().header.getBuilder().setSeq(seq).build().data()
-            let data = SocketDataPaser.shared().build(withType: SocketDataPaser.BaseType.chart, body: root)!
-            self.sent(data: data,tag:0)
-        } catch let err {
-            print(err)
-        }
+    func sent(msg:GeneratedMessage,completion:@escaping SentMsgCompletion)  {
+        let seq = add(sentCompletion: completion)
+        let data = SocketDataPaser.shared().build(withType: SocketDataPaser.BaseType.requist, seq: seq, body: msg)!
+        self.sent(data: data,tag:0)
     }
     
     private func sent(data:Data,tag:Int){
@@ -82,13 +77,22 @@ class SocketManager : NSObject {
 extension SocketManager : GCDAsyncSocketDelegate {
     
     func socket(_ sock: GCDAsyncSocket, didRead data: Data, withTag tag: Int) {
-        do {
-            let root = try Root.parseFrom(data: data)
-            let err = try Error.parseFrom(data: root.body)
-            dispatchSentComepletion(withTag: tag, root: root, error: err)
-        } catch let err {
-            print(err);
+        let msgArr = SocketDataPaser.shared().parse(data: data)
+        for (header,root) in msgArr {
+            do {
+                if let seq = header?.seq {
+                    if let err = root as? Error {
+                        dispatchSentComepletion(withTag: seq, root: nil, error: err)
+                    }else{
+                        dispatchSentComepletion(withTag: seq, root: root, error: nil)
+                    }
+                    
+                }
+            } catch let err {
+                print(err);
+            }
         }
+        
     }
     
     func socket(_ sock: GCDAsyncSocket, didConnectTo url: URL) {

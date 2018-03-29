@@ -17,16 +17,7 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         
         
-        do {
-            let head = try MsgHeader.Builder().setSeq(7888).setUid(788).setType(.enumRootTypeMessage).setMethod(.broadcast).setServer(.enumRootServerLogin).build()
-            let body = try LoginReq.Builder().setNickName("faffa").setPwd("fds8899").build().data()
-            let root = try Root.Builder().setHeader(head).setBody(body).build()
-            let data = SocketDataPaser.shared().build(withType: .chart, body: root)
-            let header = SocketDataPaser.shared().parse(data: data!)
-            print(header);
-        } catch let err {
-            print(err)
-        }
+      
         
         
         

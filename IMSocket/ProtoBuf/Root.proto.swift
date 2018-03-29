@@ -999,10 +999,9 @@ final public class Root : GeneratedMessage {
         super.init()
     }
     override public func isInitialized() throws {
-        if !hasHeader {
-            throw ProtocolBuffersError.invalidProtocolBuffer("Uninitialized Message \(Root.self): field \"header\" mark required")
+        if hasHeader {
+            try header.isInitialized()
         }
-        try header.isInitialized()
         if hasExt {
             try ext.isInitialized()
         }

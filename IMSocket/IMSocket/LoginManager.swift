@@ -11,16 +11,11 @@ import ProtocolBuffers
 
 
 var kCurrentUid : UInt32?;
-func requst(withBodyMsg body:GeneratedMessageBuilder,server:EnumRootServer,methd:EnumServerMethod) throws ->Root {
+func requst(withBodyMsg body:GeneratedMessageBuilder,server:CommonMethod) throws ->Common {
     do {
-        let headerBuild =  MsgHeader.Builder().setType(.enumRootTypeRequest).setServer(server).setMethod(methd)
-        if let uid = kCurrentUid {
-            headerBuild.setUid(uid)
-        }
-        let header = try? headerBuild.build()
-        let tdata  = try body.build().data()
-        let msg   = try Root.Builder().setBody(tdata).setHeader(header).build()
-        return msg;
+        let bodyData = try body.build().data()
+        let comom = try Common.Builder().setMethod(server).setBody(bodyData).build()
+        return comom;
     } catch let err {
         print(err)
         throw err
@@ -29,14 +24,28 @@ func requst(withBodyMsg body:GeneratedMessageBuilder,server:EnumRootServer,methd
 
 
 
+
+
+
 class LoginManager {
+    
+   static func requstUser(withBodyMsg body:GeneratedMessageBuilder,server:UserCmd) throws ->Common {
+        do {
+            let bodyData = try body.build().data()
+            let user =  UserMsg.Builder().setCmd(server).setBody(bodyData)
+            return try requst(withBodyMsg: user, server: .user)
+        } catch let err {
+            print(err)
+            throw err
+        }
+    }
+    
     static func login(user:String,pwd:String,completion:@escaping (LoginRes?,Error?)->Void){
         let loginReq = LoginReq.Builder().setPwd(pwd).setNickName(user)
-        guard let req = try? requst(withBodyMsg: loginReq,server: .enumRootServerLogin, methd: .login) else { return }
-        SocketManager.shared().sent(root: req) { (res, err) in
-            if let res = res {
-                let  loginRes  = try? LoginRes.parseFrom(data: res.body)
-                completion(loginRes,nil)
+        guard let req = try? requst(withBodyMsg: loginReq,server: .user) else { return }
+        SocketManager.shared().sent(msg: req) { (res, err) in
+            if let res = res as? LoginRes {
+                completion(res,nil)
             }else{
                 completion(nil,err)
             }
@@ -45,31 +54,25 @@ class LoginManager {
     
     static func signin(user:String,pwd:String,completion:@escaping (SiginRes?,Error?)->Void){
         let loginReq = SigninReq.Builder().setPwd(pwd).setNickName(user)
-        guard let req = try? requst(withBodyMsg: loginReq,
-                                    server: .enumRootServerLogin,
-                                    methd: .signin)  else { return }
-        SocketManager.shared().sent(root: req) { (res, err) in
-            if let res = res {
-                let  loginRes  = try? SiginRes.parseFrom(data: res.body)
-                if let uid = loginRes?.uid {
-                    kCurrentUid  = uid
-                }
-                completion(loginRes,nil)
+        guard let req = try? requstUser(withBodyMsg: loginReq,
+                                    server: UserCmd.userCmdSignIn)  else { return }
+        SocketManager.shared().sent(msg: req) { (res, err) in
+            if let res = res as? SiginRes {
+                completion(res,nil)
             }else{
                 completion(nil,err)
             }
         }
     }
     
-    static func logout(completion:@escaping (CommonRes?,Error?)->Void){
+    static func logout(completion:@escaping (Bool,Error?)->Void){
         let loginReq = LogoutReq.Builder()
-        guard let req = try? requst(withBodyMsg: loginReq,server: .enumRootServerLogin, methd: .logout) else { return }
-        SocketManager.shared().sent(root: req) { (res, err) in
-            if let res = res {
-                let  loginRes  = try? CommonRes.parseFrom(data: res.body)
-                completion(loginRes,nil)
+        guard let req = try? requst(withBodyMsg: loginReq,server: .user) else { return }
+        SocketManager.shared().sent(msg: req) { (res, err) in
+            if err == nil  {
+                completion(true,nil)
             }else{
-                completion(nil,err)
+                completion(false,err)
             }
         }
     }

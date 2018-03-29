@@ -1,0 +1,14 @@
+
+syntax = "proto2";
+
+
+enum Common_method {
+    user = 0;
+    message = 1;
+    friend   = 2;
+}
+
+message Common {
+    required Common_method method = 1;
+    optional bytes body = 2;
+}
