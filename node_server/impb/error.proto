@@ -1,13 +1,14 @@
 
-syntax = "proto2";
+syntax = "proto3";
 
 
 enum error_type {
-    invalid_params = 1;
+    comom_err  = 0;
+    invalid_params = 2;
 }
 
 message Error {
-    required error_type type = 1;
-    required string msg = 2;
+     error_type type = 1;
+    string msg = 2;
 }
 

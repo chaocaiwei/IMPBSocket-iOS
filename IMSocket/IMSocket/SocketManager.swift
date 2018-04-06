@@ -10,50 +10,88 @@ import UIKit
 import CocoaAsyncSocket
 import ProtocolBuffers
 
+
+
+
+protocol PingDelegate {
+    func onReceivePing()
+}
+
+protocol NotificationDelegate {
+    func onReceive(noti:NotificationMsg)
+}
+
+protocol ConnectDelegate {
+    func onConnectSuceess()
+    func onFalseConnect()
+}
+
 class SocketManager : NSObject {
+    
+    
+    var pingDelegate : PingDelegate?
+    var notificationDelegate : NotificationDelegate?
+    var connectdelegate : ConnectDelegate?
+    var host : String?
+    var port : UInt16?
+    var isConnected  = false
+    
     private override init(){
         super.init()
-        self.socket = GCDAsyncSocket(delegate: self, delegateQueue: delegateQueue)
     }
     static let _ins = SocketManager()
     static func shared()->SocketManager{
         return _ins;
     }
-    typealias SentMsgCompletion = (GeneratedMessage?,Error?)->Void
-    let delegateQueue = DispatchQueue.global()
-    var socket :GCDAsyncSocket!
-    var uid : String?
-    var token : String?
-    var completionDic = [UInt32:SentMsgCompletion]()
-    var latestSeq  : UInt32 = 1;
     
+    enum SentMsgCompletion {
+        case requist(((Data?,Error?)->Void))
+        case message(((Bool)->Void))
+        case ping(((Bool)->Void))
+    }
+    
+    private let delegateQueue = DispatchQueue.global()
+    private lazy var socket :GCDAsyncSocket = {
+        let socket = GCDAsyncSocket(delegate: self, delegateQueue: delegateQueue)
+        return socket
+    }()
+    
+    private var connectCompl : ((Bool)->Void)?
     private let comSem = DispatchSemaphore(value: 1)
-    // 添加发送数据的回调函数到派发表里
-    // @raturn completion对应的seq 队列顺序标识
-    private func add(sentCompletion completion:@escaping SentMsgCompletion)->UInt32{
-        comSem.wait()
-        let tamp = self.latestSeq;
-        self.completionDic[tamp] = completion
-        self.latestSeq  += 1;
-        comSem.signal()
-        return tamp
+    private var completionDic = [UInt32:SentMsgCompletion]()
+    
+    private func dispatchSentComepletion(withTag tag:UInt32,isSuc:Bool,root:Data?,error:Error?){
+
+        guard let completion = self.completionDic[tag] else { return }
+        
+        DispatchQueue.main.async{
+            switch completion {
+            case .requist(let compl):
+                if (root == nil && error == nil){ return }
+                compl(root,error)
+                break;
+            case .message(let compl):
+                compl(isSuc)
+                break;
+            case .ping(let compl):
+                compl(isSuc)
+                break
+            }
+            self.completionDic.removeValue(forKey: tag)
+        }
     }
     
-    private func dispatchSentComepletion(withTag tag:UInt32,root:GeneratedMessage?,error:Error?){
-        comSem.wait()
-        let completion = self.completionDic[tag]
-        completion?(root,error)
-        comSem.signal()
-    }
-    
-    func connect(toHost host:String , port:UInt16) throws {
+    func connect(toHost host:String , port:UInt16 ,completion:@escaping (Bool)->Void)  {
         do {
+            self.connectCompl  = completion
+            self.host  = host
+            self.port = port
             socket.delegate   = self
             try socket.connect(toHost: host, onPort: port)
             socket.readData(withTimeout:-1, tag: 0)
         } catch let err {
             print(err)
-            throw err
+            completion(false)
         }
     }
     
@@ -61,10 +99,46 @@ class SocketManager : NSObject {
         socket.disconnect()
     }
     
-    func sent(msg:GeneratedMessage,completion:@escaping SentMsgCompletion)  {
-        let seq = add(sentCompletion: completion)
-        let data = SocketDataPaser.shared().build(withType: SocketDataPaser.BaseType.requist, seq: seq, body: msg)!
-        self.sent(data: data,tag:0)
+    func reconect(completion:@escaping (Bool)->Void) {
+        guard let host = self.host , let port = self.port else {
+            completion(false);
+            return
+        }
+        self.connect(toHost: host, port: port,completion: completion)
+    }
+    
+    func sent(data:Data,type:BaseType,completion:SentMsgCompletion)  {
+        if self.isConnected == false {
+            self.reconect(){[weak self] isSuc in
+                if(isSuc){
+                    self?._sent(data: data, type: type, completion: completion)
+                }else{
+                    switch (completion){
+                    case .requist(let compl):
+                        let err = try? Error.Builder().setType(.comomErr).setMsg("连接失败").build()
+                        compl(nil,err)
+                    case .message(let compl):
+                        compl(false)
+                    case .ping(let compl):
+                        compl(false)
+                    }
+                }
+            }
+        }else{
+            self._sent(data: data, type: type, completion: completion)
+        }
+    }
+    
+    func _sent(data:Data,type:BaseType,completion:SentMsgCompletion)  {
+        guard let sData = SocketDataBuilder.shared().build(withType: type, body:data) else { return }
+        switch sData {
+        case .sent(seq: let seq, data: let data):
+            self.completionDic[seq] = completion
+            self.sent(data: data,tag:Int(seq))
+            break
+        default:
+            break;
+        }
     }
     
     private func sent(data:Data,tag:Int){
@@ -77,59 +151,54 @@ class SocketManager : NSObject {
 extension SocketManager : GCDAsyncSocketDelegate {
     
     func socket(_ sock: GCDAsyncSocket, didRead data: Data, withTag tag: Int) {
-        let msgArr = SocketDataPaser.shared().parse(data: data)
-        for (header,root) in msgArr {
-            do {
-                if let seq = header?.seq {
-                    if let err = root as? Error {
-                        dispatchSentComepletion(withTag: seq, root: nil, error: err)
-                    }else{
-                        dispatchSentComepletion(withTag: seq, root: root, error: nil)
-                    }
-                    
+        let msgArr = SocketDataBuilder.shared().parse(data: data)
+        for (socketData) in msgArr {
+            switch (socketData){
+            case .receive(seq: let seq, type:let type,body: let body):
+                switch type {
+                case .requist:
+                    handle(respon: body, seq: seq)
+                    break;
+                case .chart:
+                    handle(message: body, seq: seq)
+                    break;
+                case .ping:
+                    handle(ping: data, seq: seq)
+                    break;
+                case .notification:
+                    handle(notification: body, seq: seq)
+                    break;
                 }
-            } catch let err {
-                print(err);
+                break
+            default:break
             }
         }
-        
-    }
-    
-    func socket(_ sock: GCDAsyncSocket, didConnectTo url: URL) {
-        print("socket \(sock) didConnectTo \(url)")
+        sock.readData(withTimeout: -1, tag: 0)
     }
     
     func socket(_ sock: GCDAsyncSocket, didWriteDataWithTag tag: Int) {
+        
         print("socket \(sock) didWriteDataWithTag \(tag)")
+        dispatchSentComepletion(withTag: UInt32(tag), isSuc: true, root: nil, error: nil)
+    }
+    
+    func socket(_ sock: GCDAsyncSocket, didConnectTo url: URL) {
+        
     }
     
     func socket(_ sock: GCDAsyncSocket, didConnectToHost host: String, port: UInt16) {
+        self.connectdelegate?.onConnectSuceess()
+        self.connectCompl?(true)
+        self.isConnected = true
         print("socket \(sock) didConnectToHost \(host) port \(port)")
-    }
-    
-    func socket(_ sock: GCDAsyncSocket, didAcceptNewSocket newSocket: GCDAsyncSocket) {
-        print("socket \(sock) didAcceptNewSocket \(newSocket) ")
-    }
-    
-    func socket(_ sock: GCDAsyncSocket, didReadPartialDataOfLength partialLength: UInt, tag: Int) {
-        print("socket \(sock) didReadPartialDataOfLength \(partialLength)  tag\(tag)")
-    }
-    
-    func socket(_ sock: GCDAsyncSocket, didWritePartialDataOfLength partialLength: UInt, tag: Int) {
-        print("socket \(sock) didWritePartialDataOfLength \(partialLength)  tag\(tag)")
-    }
-    
-    func socketDidSecure(_ sock: GCDAsyncSocket) {
-        print("socketDidSecure \(sock)")
-    }
-    
-    func socketDidCloseReadStream(_ sock: GCDAsyncSocket) {
-        print("socketDidCloseReadStream \(sock)")
     }
     
     
     @objc(socketDidDisconnect:withError:)
     func socketDidDisconnect(_ sock: GCDAsyncSocket, withError err: NSError?) {
+        self.connectdelegate?.onFalseConnect()
+        self.connectCompl?(false)
+        self.isConnected  = false
         print("socketDidCloseReadStream \(sock) withError ")
     }
     
@@ -146,10 +215,43 @@ extension SocketManager : GCDAsyncSocketDelegate {
     
     func socket(_ sock: GCDAsyncSocket, shouldTimeoutWriteWithTag tag: Int, elapsed: TimeInterval, bytesDone length: UInt) -> TimeInterval {
         print("socket \(sock) shouldTimeoutWriteWithTag  \(tag)  elapsed \(elapsed) bytesDone \(length)")
+        let err = try? Error.Builder().setType(ErrorType.invalidParams).setMsg("请求超时").build()
+        dispatchSentComepletion(withTag: UInt32(tag), isSuc: false, root: nil, error: err)
         return -1
     }
     
+}
+
+/// MARK  private mathod
+extension SocketManager{
+    fileprivate func handle(respon data:Data,seq:UInt32){
+        do {
+            let respon = try CommonRespon.parseFrom(data: data)
+            dispatchSentComepletion(withTag: seq,isSuc: respon.error == nil, root: respon.respon, error: respon.error)
+        } catch let err {
+            print(err)
+        }
+    }
     
+    fileprivate func handle(message data:Data,seq:UInt32){
+        MessageManager.shared().onReceive(msg: data)
+    }
+    
+    fileprivate func handle(ping data:Data,seq:UInt32){
+        self.pingDelegate?.onReceivePing()
+    }
+    
+    fileprivate func handle(notification data:Data,seq:UInt32){
+        do {
+            let noti =  try NotificationMsg.parseFrom(data: data)
+            self.notificationDelegate?.onReceive(noti: noti)
+            P2PManager.shared().onReceive(noti: noti)
+        } catch let err {
+            print(err)
+        }
+        
+    }
     
 }
+
 

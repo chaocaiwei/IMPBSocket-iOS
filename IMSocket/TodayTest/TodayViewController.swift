@@ -27,6 +27,21 @@ class TodayViewController: UIViewController, NCWidgetProviding {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         self.extensionContext?.widgetLargestAvailableDisplayMode  = .expanded
+        let req = URLRequest(url: URL(string:"https://1255975138.vod2.myqcloud.com/88030775vodtransgzp1255975138/33b42c997447398155218396387/1522223727_1284545461.100_0.jpg")!)
+        let manager = AFHTTPSessionManager()
+        
+        
+        
+        manager.downloadTask(with: req, progress: { (pro) in
+            print(pro)
+        }, destination: { (url, resopn) -> URL in
+            print(url)
+            print(resopn)
+            return url
+        }, completionHandler: { (respon, url, eror) in
+            print("\(respon)  \(url) \(eror)")
+        }).resume()
+        
     }
   
     deinit {
@@ -35,7 +50,10 @@ class TodayViewController: UIViewController, NCWidgetProviding {
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        
+        
     }
+    
     
     
     func widgetPerformUpdate(completionHandler: (@escaping (NCUpdateResult) -> Void)) {
@@ -75,7 +93,7 @@ extension TodayViewController : UITableViewDelegate,UITableViewDataSource {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        cell.textLabel?.text  = "放大镜看"
+        cell.textLabel?.text  = "测试消息"
         return cell
         
     }

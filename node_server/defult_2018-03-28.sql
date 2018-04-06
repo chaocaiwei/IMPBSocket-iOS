@@ -82,15 +82,21 @@ CREATE TABLE `message` (
 DROP TABLE IF EXISTS `users`;
 
 CREATE TABLE `users` (
-  `user_name` text NOT NULL,
+  `user_name` varchar(255) CHARACTER SET utf8mb4 NOT NULL DEFAULT '',
   `pwd` text NOT NULL,
   `avarta_url` text,
   `user_id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `online` int(2) NOT NULL DEFAULT '0',
   `token` text,
-  `socket_id` text,
-  PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+  `socket_ip` text,
+  `port` int(11) unsigned DEFAULT NULL,
+  `ip` text,
+  `sock_port` int(11) unsigned DEFAULT NULL,
+  `sock_ip` text,
+  PRIMARY KEY (`user_id`),
+  UNIQUE KEY `user_name` (`user_name`),
+  UNIQUE KEY `user_name_2` (`user_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=latin1;
 
 
 

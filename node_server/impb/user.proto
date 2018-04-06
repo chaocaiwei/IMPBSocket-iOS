@@ -1,10 +1,8 @@
 
-syntax = "proto2";
-import "root.proto";
-
+syntax = "proto3";
 
 enum User_cmd {
-	User_cmd_sign_in = 1;
+	User_cmd_sign_in = 0;
 	User_cmd_login   = 2;
 	User_cmd_logout  = 3;
 	User_cmd_user_info = 4;
@@ -13,37 +11,41 @@ enum User_cmd {
 
 
 message User_msg {
-	required User_cmd cmd = 1;
-	optional bytes body  = 2;
+	 User_cmd cmd = 1;
+	bytes body  = 2;
 }
 
-message signin_req {
-	required string nick_name = 1;
-	required string pwd = 2;
+
+message signin_request {
+	 string nick_name = 1;
+	 string pwd = 2;
 }
 
-message login_req {
-	required string nick_name = 1;
-	required string pwd = 2;
+message login_request {
+	string nick_name = 1; // 用户名
+	string pwd = 2;       // 密码
+	string ip = 3;        // 设备当前的ip
+	int32  port = 4;      // 设备绑定的端口
+	string device_name = 5; // iOS/Andoird
+	string device_id = 6;   // 设备标识符
+	string version  = 7;    // 软件版本
 }
 
-message sigin_res {
-	required uint32 uid   = 1;
-	required string token = 2;
+message logout_request {
+	 int32 uid = 1;
 }
 
-message login_res {
-	required uint32 uid   = 1;
-	required string token = 2;
+// 注册成功 必须进行登录 统一返回uid token
+message sigin_response {
+	uint32 uid   = 1;
+	string token = 2;
 }
 
-message logout_req {
-	required int32 uid = 1;
+message login_response {
+	 uint32 uid   = 1;
+	 string token = 2;
 }
 
-message common_res {
-	required string message = 1;
-}
 
 
 

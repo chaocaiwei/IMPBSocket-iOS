@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "C85C20386E4F41CF9CB245387FC5B44E"
+               BlueprintIdentifier = "F7A34E0D00C8ED63EAF4C85EE20E3138"
                BuildableName = "Pods_IMSocket.framework"
                BlueprintName = "Pods-IMSocket"
                ReferencedContainer = "container:Pods.xcodeproj">
@@ -26,7 +26,6 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      language = ""
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
       </Testables>
@@ -37,7 +36,6 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      language = ""
       launchStyle = "0"
       useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
@@ -47,7 +45,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "C85C20386E4F41CF9CB245387FC5B44E"
+            BlueprintIdentifier = "F7A34E0D00C8ED63EAF4C85EE20E3138"
             BuildableName = "Pods_IMSocket.framework"
             BlueprintName = "Pods-IMSocket"
             ReferencedContainer = "container:Pods.xcodeproj">

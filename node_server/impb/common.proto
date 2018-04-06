@@ -1,14 +1,21 @@
 
-syntax = "proto2";
-
+syntax = "proto3";
+import  "error.proto";
 
 enum Common_method {
-    user = 0;
-    message = 1;
-    friend   = 2;
+    common_method_user = 0;
+    common_method_message = 1;
+    common_method_friend   = 2;
+    common_method_p2p_connect = 3;
 }
 
 message Common {
-    required Common_method method = 1;
-    optional bytes body = 2;
+    Common_method method = 1;
+    bytes body = 2;
+}
+
+message CommonRespon {
+      bool isSuc = 1;
+    bytes respon = 2;
+    Error error  = 3;
 }

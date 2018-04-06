@@ -2,125 +2,151 @@
  * Created by jztech-weichaocai on 2018/3/27.
  */
 
-var ProtoBuf = require("protobufjs");
-var builder = ProtoBuf.loadProtoFile("./impb/root.proto"),
-    Root   = builder.build("root"),
-    Header   = builder.build("msg_header"),
-    UserInfo = builder.build("user_info"),
-    BaseType = builder.build("enum_root_type"),
-    BaseServer = builder.build("enum_root_server");
-    SeverMethod = builder.build("enum_server_method");
-var LoginBuilder = ProtoBuf.loadProtoFile("./impb/user.proto"),
-    SiginReq   = LoginBuilder.build("signin_req"),
-    SiginRespon   = LoginBuilder.build("sigin_res"),
-    LoginReq   = LoginBuilder.build("login_req"),
-    LoginRespon   = LoginBuilder.build("login_res"),
-    LogoutReq   = LoginBuilder.build("logout_req"),
-    CommonRes   = LoginBuilder.build("common_res"),
-    User_msg    = LoginBuilder.build("User_msg"),
-    User_cmd    = LoginBuilder.build("User_cmd")
-var ErrorBuilder = ProtoBuf.loadProtoFile("./impb/error.proto"),
-    Error    = ErrorBuilder.build("Error");
-var db = require("../dataBase")
-
-var handle = {};
+var logger = require('../log').logger('user');
+var LoginBuilder =  require("../impb/user_pb");
+var SiginReq = LoginBuilder.sigin_response;  // request response
+var SiginRespon   = LoginBuilder.sigin_response;
+var LoginReq   = LoginBuilder.login_request;
+var LoginRespon   = LoginBuilder.login_response;
+var LogoutReq   = LoginBuilder.logout_request;
+var CommonRes   = LoginBuilder.common_response;
+var User_msg    = LoginBuilder.User_msg;
+var User_cmd    = LoginBuilder.User_cmd;
+var ErrorBuilder = require("../impb/error_pb");
+var SocketError    = ErrorBuilder.Error;
+var db = require("../dataBase");
+var global = require("../global");
 
 
-
-
-function handleLoginMsg(root,compl) {
-    var req = LoginReq.decode(root.body);
-    var name = req.nick_name;
-    var pwd  = req.pwd ;
+function handleLoginMsg(root,sock,compl) {
+    var req =  LoginReq.deserializeBinary(root.getBody()) ;
+    var name = req.getNickName();
+    var pwd  = req.getPwd();
+    logger.info("login with name=" + name + " pwd=" + pwd);
     db.userWithName(name,function (user,err) {
-        if (user ){
-            if (user.pwd != pwd){
-                print(err)
-                var err = Error.builder()
-                err.msg  = "密码错误"
-                if(compl){
-                    compl(err)
-                }
-                return;
-            }
-
-            var res = new LoginRespon();
-            res.token = user.token;
-            res.uid   = user.uid;
+        if(!user || err){
+            var newerr = new SocketError();
+            newerr.setMsg("" + err);
+            logger.error("login query user with name error " + err);
             if(compl){
-                compl(res,user.uid)
+                compl(false,newerr)
             }
-
-        }else{
-            print(err)
-            var err = Error.builder()
-            err.msg  = "用户不存在"
-            if(compl){
-                compl(err)
-            }
+            return;
         }
+        if (!user.length){
+            var newer = new SocketError();
+            newer.setMsg( "用户不存在");
+            logger.error("login error 用户不存在");
+            if(compl){
+                compl(false,newer)
+            }
+            return
+        }
+
+        var curUser = user[0];
+        if (curUser.pwd !== pwd){
+            var newErr = new SocketError();
+            newErr.setMsg("密码错误")
+            logger.error("login  error " + "密码错误");
+            if(compl){
+                compl(false,newErr)
+            }
+            return;
+        }
+
+        var ip   = req.getIp();
+        var port = req.getPort();
+        var sock_ip = sock.remoteAddress;
+        var sock_port = sock.remotePort;
+        var user = {
+            "user_id":curUser.user_id,
+            "online":0,
+            "socket_ip":sock_ip,
+            "sock_port":sock_port,
+            "port":port,
+            "ip":ip
+        };
+
+        db.updateUser(user);
+        global.cachSock(sock,user)
+        var res = new LoginRespon()
+        res.setToken(curUser.token);
+        res.setUid(curUser.user_id);
+        logger.info("login  sucess " + "token=" + res.getToken() + " uid=" + res.getUid() );
+        if(compl){
+            compl(true,res,curUser.user_id)
+        }
+
 
     })
 }
 
 function  handleSigninMsg(root,compl) {
-    var req = SiginReq.decode(root.body);
-    var name = req.nick_name;
-    var pwd  = req.pwd;
-    var token = Math.ceil(Math.random()*9999999) + "_" + name
-    db.insertLoginInfo(name,pwd,token,function (err) {
-        if(err){
-            var errRes = Error.builder()
-            errRes.msg  = err.toString()
-            root.body  = errRes.toBuffer();
-            root.header.type  = BaseType.enum_root_type_error
-            sock.write(root.toBuffer());
-            return
+    var req = new SiginReq.deserializeBinary(root.getBody());
+    var name = req.getNickName();
+    var pwd  = req.getPwd();
+    var token = Math.ceil(Math.random()*9999999) + "_" + name;
+    db.userWithName(name,function (user) {
+        if( user && user.length){
+            var errRes = new SocketError();
+            errRes.setMsg("用户已存在");
+            errRes.setType(1);
+            logger.error("login error 用户已存在");
+            compl(false,errRes);
+        }else{
+            db.insertLoginInfo(name,pwd,token,function (err) {
+                if(err){
+                    var errRes = new SocketError();
+                    errRes.setMsg(err + "");
+                    compl(false,errRes);
+                    logger.error("login insert user error " + errRes)
+                }else{
+                    var res = new SiginRespon();
+                    logger.info("login suceess with name=" + name);
+                    compl(true,res);
+                }
+            })
+
         }
-        db.latestUserId(function (id) {
-            var res = new SiginRespon();
-            res.uid   = id;
-            res.token = token.toString();
-            if(compl){
-                compl(res,id)
-            }
-        })
     })
+
+
 
 }
 
 function  handleLogoutMsg(root,compl) {
-    var req = LogoutReq.decode(root.body);
-    var name = req.nick_name;
-    var pwd  = req.pwd;
+    var req =  LogoutReq.deserializeBinary(root.getBody());
+    var name = req.getNickName();
+    var pwd  = req.getPwd();
     var user = {
         "online":0,
         "user_id":req.header.uid
-    }
-    db.updateUser(user)
+    };
+    db.updateUser(user);
     var res = new CommonRes();
-    res.msg = "退出成功";
+    res.setMsg("退出成功");
+    logger.info("退出成功");
     if(compl){
-        compl(res)
+        compl(true,res);
     }
 
 
 }
 
 
-exports.route = function (root,completion){
+exports.route = function (root,sock,completion){
 
-    var user = User_msg.decode(root);
+    var user =  User_msg.deserializeBinary(root);
 
-    switch(user.cmd)  {
-        case User_cmd.User_cmd_login:
-            handleLoginMsg(user,completion)
+    switch(user.getCmd())  {
+        case User_cmd.USER_CMD_LOGIN:
+            handleLoginMsg(user,sock,completion);
             break;
-        case User_cmd.User_cmd_sign_in:
-            handleSigninMsg(user,completion)
+        case User_cmd.USER_CMD_SIGN_IN:
+            handleSigninMsg(user,completion);
             break;
-        case User_cmd.User_cmd_logout:
-            handleLogoutMsg(user,completion)
+        case User_cmd.USER_CMD_LOGOUT:
+            handleLogoutMsg(user,completion);
             break;
     }
 };

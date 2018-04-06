@@ -1,45 +1,45 @@
 
-syntax = "proto2";
-import "root.proto";
+syntax = "proto3";
+import "base.proto";
 
 message add_friend_req {
-	required string target_id = 1;
-    optional string ext_msg = 2;
+	 string target_id = 1;
+    string ext_msg = 2;
 }
 
 message receive_friend_req {
-	required bool is_receive = 1;
-	required string target_uid = 2;
-	optional string ext_msg = 3;
+	 bool is_receive = 1;
+	 string target_uid = 2;
+	string ext_msg = 3;
 }
 
 message get_friend_list_req {
-	optional int32 page = 1;
-	optional int32 limit = 2;
+	int32 page = 1;
+	int32 limit = 2;
 }
 
 message add_friend_noti {
-    required string op_id = 1;
-    optional string ext_msg = 2;
+    string op_id = 1;
+    string ext_msg = 2;
 }
 
 message receive_friend_noti {
-    required bool is_receive = 1;
-	required string op_uid = 2;
-	optional string ext_msg = 3;
+     bool is_receive = 1;
+	 string op_uid = 2;
+	string ext_msg = 3;
 }
 
 message get_user_info_by_id {
-	required string target_id = 1;
+	 string target_id = 1;
 }
 
 message user_info_res {
-	required user_info user_info = 1;
+	 user_info user_info = 1;
 }
 
 
 message user_info_list_res {
-	repeated user_info user_list = 1;
+	 user_info user_list = 1;
 }
 
 

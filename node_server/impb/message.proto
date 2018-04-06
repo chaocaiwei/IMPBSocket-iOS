@@ -1,39 +1,39 @@
 
-syntax = "proto2";
-import "root.proto";
+syntax = "proto3";
+import "base.proto";
 
 message msg_text_content {
-	required string text = 1;
+	 string text = 1;
 }
 
 message msg_img_content {
-	required string img_url = 1;
+	 string img_url = 1;
 }
 
 message location_info {
-	required double lat = 1;
-	required double lon = 2;
+	 double lat = 1;
+	 double lon = 2;
 }
 
 message msg_location_content {
-	required location_info location = 1;
+	 location_info location = 1;
 }
 
 message msg_sound_content {
-	required double sound_duration = 1; // 时长
-	required string source_url = 2;
-	optional string location_url = 3;
-	optional string fild_nme = 4;
+	 double sound_duration = 1; // 时长
+	 string source_url = 2;
+	string location_url = 3;
+	string fild_nme = 4;
 }
 
 // 表情
 message msg_expression_content {
-	required int32  eid = 1; // 表情id
-	optional string name = 2; // 表情名称
+	 int32  eid = 1; // 表情id
+	string name = 2; // 表情名称
 }
 
 message msg_cumstom_content {
-	required ext_key_info info = 1;
+	 ext_key_info info = 1;
 }
 
 enum enum_msg_content_type {
@@ -46,10 +46,36 @@ enum enum_msg_content_type {
 	enum_msg_content_type_custom   = 6;
 }
 
+message Group_info {
+
+}
+
+message C2C_msg {
+	 int32 from = 1;
+	 int32 to  = 2;
+	user_info from_info   = 3;
+	user_info to_info = 4;
+	 enum_msg_content_type type = 5;
+	 bytes content = 6;
+	ext_key_info ext = 9;
+}
+
+message Group_msg {
+	int32 group_id    = 1;
+	Group_info group_info = 2;
+	 enum_msg_content_type type = 3;
+	 bytes content = 4;
+	ext_key_info ext = 9;
+}
+
+enum enum_msg_type {
+	enum_msg_type_c2c = 0;
+	enum_msg_type_group = 2;
+	enum_msg_type_broacast = 3;
+	enum_msg_custom   = 4;
+}
+
 message base_msg {
-	required user_info sent_user_info   = 4;
-	required user_info target_user_info = 1;
-	required enum_msg_content_type type = 2;
-	required bytes content = 3;
-	optional ext_key_info ext = 9;
+	  enum_msg_type type = 1;
+	bytes body = 2;
 }
